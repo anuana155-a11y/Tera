@@ -1,0 +1,8 @@
+{
+  "name": "tera",
+  "description": "A mobile-first, open group voice call app using WebRTC and Socket.IO for instant, ephemeral voice chat.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": []
+}

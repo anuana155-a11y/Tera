@@ -19,6 +19,11 @@ async function startServer() {
 
   const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
+  // Health check for Render/Deployment
+  app.get("/health", (req, res) => {
+    res.status(200).send("OK");
+  });
+
   // Track users
   const users = new Map<string, string>();
 

@@ -115,20 +115,25 @@ export default function App() {
   // --- Volume Detection ---
 
   const setupVolumeDetection = useCallback((stream: MediaStream, callback: (isSpeaking: boolean) => void) => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const source = audioContext.createMediaStreamSource(stream);
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    source.connect(analyser);
+    const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+    audioContextRef.current = context;
+    
+    const source = context.createMediaStreamSource(stream);
+    const analyst = context.createAnalyser();
+    analyst.fftSize = 256;
+    source.connect(analyst);
 
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const dataArray = new Uint8Array(analyst.frequencyBinCount);
     let speakingTimeout: NodeJS.Timeout | null = null;
 
+    let isClosed = false;
+
     const check = () => {
-      analyser.getByteFrequencyData(dataArray);
+      if (isClosed) return;
+      analyst.getByteFrequencyData(dataArray);
       const average = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
       
-      if (average > 20) { // Threshold
+      if (average > 30) { // Slightly increased threshold for better stability
         callback(true);
         if (speakingTimeout) clearTimeout(speakingTimeout);
         speakingTimeout = setTimeout(() => callback(false), 400);
@@ -138,7 +143,9 @@ export default function App() {
 
     check();
     return () => {
-      audioContext.close();
+      isClosed = true;
+      if (speakingTimeout) clearTimeout(speakingTimeout);
+      context.close();
     };
   }, []);
 
@@ -147,7 +154,13 @@ export default function App() {
     if (!username.trim()) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
       localStreamRef.current = stream;
       setLocalStream(stream);
 
@@ -158,7 +171,10 @@ export default function App() {
       });
 
       const signalServer = import.meta.env.VITE_SIGNAL_SERVER || window.location.origin;
-      socketRef.current = io(signalServer);
+      socketRef.current = io(signalServer, {
+        reconnectionAttempts: 5,
+        timeout: 10000
+      });
 
       socketRef.current.on("connect", () => {
         socketRef.current?.emit("join", username);
@@ -166,9 +182,14 @@ export default function App() {
       });
 
       socketRef.current.on("all-users", (users: { id: string; username: string }[]) => {
+        const initialPeers = new Map<string, PeerInfo>();
         users.forEach(({ id, username: peerName }) => {
-          setPeers((prev) => new Map(prev).set(id, { id, username: peerName, isSpeaking: false, isMuted: false }));
-          
+          initialPeers.set(id, { id, username: peerName, isSpeaking: false, isMuted: false });
+        });
+        setPeers(initialPeers);
+
+        // Initiation phase
+        users.forEach(({ id, username: peerName }) => {
           const pc = createPeerConnection(id, peerName);
           pc.createOffer().then((offer) => {
             pc.setLocalDescription(offer);

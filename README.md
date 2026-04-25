@@ -1,20 +1,22 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# tera
 
-# Run and deploy your AI Studio app
+A mobile-first, open group voice call app using WebRTC and Socket.IO.
 
-This contains everything you need to run your app locally.
+## Deployment to Render.com
 
-View your app in AI Studio: https://ai.studio/apps/1cf86797-8b7c-4ac1-96b8-f34984cc2ef5
+1.  **Create a new Web Service** on Render.
+2.  **Connect your GitHub repository**.
+3.  **Configure the service**:
+    *   **Runtime**: `Node`
+    *   **Build Command**: `npm install && npm run build`
+    *   **Start Command**: `npm start`
+4.  **Environment Variables**:
+    *   `NODE_ENV`: `production`
 
-## Run Locally
+## Features
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- No rooms, no login
+- High-quality WebRTC voice (Mesh network)
+- Speaking indicators
+- Mobile-optimized "Immersive UI"
+- Auto-reconnection
